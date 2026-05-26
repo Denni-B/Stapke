@@ -9,6 +9,8 @@ class SchemaIds {
     required this.classesCollectionId,
     required this.tabsCollectionId,
     required this.cardsCollectionId,
+    required this.rankingItemsCollectionId,
+    required this.rankingSubmissionsCollectionId,
     required this.driveConnectionsCollectionId,
   });
 
@@ -18,6 +20,8 @@ class SchemaIds {
       classesCollectionId: config.appwriteClassesCollectionId,
       tabsCollectionId: config.appwriteTabsCollectionId,
       cardsCollectionId: config.appwriteCardsCollectionId,
+      rankingItemsCollectionId: config.appwriteRankingItemsCollectionId,
+      rankingSubmissionsCollectionId: config.appwriteRankingSubmissionsCollectionId,
       driveConnectionsCollectionId: config.appwriteDriveConnectionsCollectionId,
     );
   }
@@ -26,6 +30,8 @@ class SchemaIds {
   final String classesCollectionId;
   final String tabsCollectionId;
   final String cardsCollectionId;
+  final String rankingItemsCollectionId;
+  final String rankingSubmissionsCollectionId;
   final String driveConnectionsCollectionId;
 }
 

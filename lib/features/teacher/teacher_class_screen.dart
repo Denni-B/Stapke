@@ -7,12 +7,14 @@ import 'package:go_router/go_router.dart';
 import '../../domain/class_public_token.dart';
 import '../../domain/models/tab_category.dart';
 import '../../domain/models/teachers_class.dart';
+import '../../domain/tab_kind.dart';
 import '../../services/appwrite/auth_controller.dart';
 import '../../services/appwrite/teacher_repository.dart';
 import '../../services/drive/drive_api.dart';
 import '../../utils/tab_color.dart';
 import '../../widgets/tab_color_picker_dialog.dart';
 import 'teacher_navigation.dart';
+import 'teacher_ranking_screen.dart';
 import 'teacher_tab_screen.dart';
 
 class TeacherClassScreen extends ConsumerStatefulWidget {
@@ -368,10 +370,17 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
                 children: <Widget>[
                   Expanded(
                     child: Text(
-                      'Tabbladen',
+                      'Tabbladen en rankings',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
                   FilledButton.icon(
                     onPressed: () async {
                       final title = await _promptText(
@@ -439,15 +448,98 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
                     icon: const Icon(Icons.add),
                     label: const Text('Nieuw tabblad'),
                   ),
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      final title = await _promptText(
+                        context,
+                        dialogTitle: 'Nieuwe ranking',
+                        fieldLabel: 'Titel ranking',
+                        initial: null,
+                        confirmLabel: 'Aanmaken',
+                      );
+                      if (title == null) return;
+                      if (!context.mounted) return;
+                      final String? pickedHex =
+                          await showTabColorPickerDialog(context, currentHex: null);
+                      if (!context.mounted) return;
+                      final sortOrder = tabs.length;
+                      try {
+                        final created = await repo.createTab(
+                          teacherId: widget.userId,
+                          classId: widget.clazz.id,
+                          title: title,
+                          sortOrder: sortOrder,
+                          tabColorHex:
+                              pickedHex == null || pickedHex.isEmpty ? null : pickedHex,
+                          tabKind: TabKind.ranking,
+                        );
+                        try {
+                          final drive = ref.read(driveApiProvider);
+                          final root = await drive.getRootFolderId();
+                          if (root.trim().isNotEmpty) {
+                            final appFolder =
+                                await drive.ensureFolder(parentId: root, name: 'Teachers Help');
+                            final classesFolder =
+                                await drive.ensureFolder(parentId: appFolder, name: 'Klassen');
+                            final classFolder = widget.clazz.driveFolderId?.trim().isNotEmpty == true
+                                ? widget.clazz.driveFolderId!.trim()
+                                : await drive.ensureFolder(
+                                    parentId: classesFolder,
+                                    name: widget.clazz.name,
+                                  );
+                            if (widget.clazz.driveFolderId == null ||
+                                widget.clazz.driveFolderId!.trim().isEmpty) {
+                              await repo.setClassDriveFolderId(
+                                classId: widget.clazz.id,
+                                driveFolderId: classFolder,
+                              );
+                            }
+                            final rankingsFolder =
+                                await drive.ensureFolder(parentId: classFolder, name: 'Rankings');
+                            final rankingFolder =
+                                await drive.ensureFolder(parentId: rankingsFolder, name: created.title);
+                            await repo.setTabDriveFolderId(
+                              tabId: created.id,
+                              driveFolderId: rankingFolder,
+                            );
+                          }
+                        } catch (_) {
+                          // Best effort.
+                        }
+                        if (!context.mounted) return;
+                        setState(() {
+                          final next = <TabCategory>[...tabs, created]
+                            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+                          _tabsFuture = Future.value(next);
+                        });
+                        // ignore: unawaited_futures
+                        Future<void>.delayed(const Duration(milliseconds: 400), () async {
+                          if (!mounted) return;
+                          _refreshTabs();
+                        });
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Ranking aanmaken mislukt: $e')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.leaderboard),
+                    label: const Text('Nieuwe ranking'),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
               if (tabs.isEmpty)
-                const Text('Nog geen tabbladen. Maak bijv. „Boerderij”, „Dieren”, …'),
+                const Text('Nog geen tabbladen of rankings.'),
               ...tabs.map(
                 (t) => ListTile(
-                  leading: _ClassTabLeading(tabColorHex: t.tabColorHex),
+                  leading: _ClassTabLeading(
+                    tabColorHex: t.tabColorHex,
+                    isRanking: t.isRanking,
+                  ),
                   title: Text(t.title),
+                  subtitle: Text(t.isRanking ? 'Ranking' : 'Tabblad'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
@@ -503,8 +595,11 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
                                   builder: (ctx) => AlertDialog(
                                     title: const Text('Tabblad verwijderen?'),
                                     content: Text(
-                                      'Verwijdert tabblad „${t.title}” en alle bijbehorende kaarten. '
-                                      'Drive-bestanden blijven staan.',
+                                      t.isRanking
+                                          ? 'Verwijdert ranking „${t.title}”, alle foto\'s en alle stemmen. '
+                                              'Drive-bestanden blijven staan.'
+                                          : 'Verwijdert tabblad „${t.title}” en alle bijbehorende kaarten. '
+                                              'Drive-bestanden blijven staan.',
                                     ),
                                     actions: <Widget>[
                                       TextButton(
@@ -570,7 +665,9 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
                   ),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => TeacherTabScreen(userId: widget.userId, tab: t),
+                      builder: (_) => t.isRanking
+                          ? TeacherRankingScreen(userId: widget.userId, tab: t)
+                          : TeacherTabScreen(userId: widget.userId, tab: t),
                     ),
                   ),
                 ),
@@ -585,19 +682,21 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
 }
 
 class _ClassTabLeading extends StatelessWidget {
-  const _ClassTabLeading({required this.tabColorHex});
+  const _ClassTabLeading({required this.tabColorHex, this.isRanking = false});
 
   final String? tabColorHex;
+  final bool isRanking;
 
   @override
   Widget build(BuildContext context) {
+    final icon = isRanking ? Icons.leaderboard : Icons.folder_outlined;
     final Color? c = parseTabColorHex(tabColorHex);
     if (c == null) {
       return CircleAvatar(
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
         radius: 18,
         child: Icon(
-          Icons.folder_outlined,
+          icon,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       );
@@ -606,7 +705,7 @@ class _ClassTabLeading extends StatelessWidget {
       backgroundColor: c,
       radius: 18,
       child: Icon(
-        Icons.folder_outlined,
+        icon,
         color: foregroundOnTabColor(c),
       ),
     );

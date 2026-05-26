@@ -49,6 +49,14 @@ cmd /c "appwrite databases get-collection --database-id $DatabaseId --collection
 if ($LASTEXITCODE -ne 0) {
   appwrite databases create-collection --database-id $DatabaseId --collection-id "deleted_drive_items" --name "Deleted Drive Items" --document-security true
 }
+cmd /c "appwrite databases get-collection --database-id $DatabaseId --collection-id ranking_items >nul 2>nul"
+if ($LASTEXITCODE -ne 0) {
+  appwrite databases create-collection --database-id $DatabaseId --collection-id "ranking_items" --name "Ranking Items" --document-security true
+}
+cmd /c "appwrite databases get-collection --database-id $DatabaseId --collection-id ranking_submissions >nul 2>nul"
+if ($LASTEXITCODE -ne 0) {
+  appwrite databases create-collection --database-id $DatabaseId --collection-id "ranking_submissions" --name "Ranking Submissions" --document-security true
+}
 
 # Attributes and indexes
 # classes
@@ -65,6 +73,7 @@ appwrite databases create-string-attribute --database-id $DatabaseId --collectio
 appwrite databases create-integer-attribute --database-id $DatabaseId --collection-id "tabs" --key "sortOrder" --required true --min 0 --max 100000
 appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "tabs" --key "tabColorHex" --size 16 --required false
 appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "tabs" --key "driveFolderId" --size 128 --required false
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "tabs" --key "tabKind" --size 32 --required false
 appwrite databases create-index --database-id $DatabaseId --collection-id "tabs" --key "byClass" --type "key" --attributes "classId"
 appwrite databases create-index --database-id $DatabaseId --collection-id "tabs" --key "byClassAndSort" --type "key" --attributes "classId" "sortOrder"
 
@@ -97,6 +106,27 @@ appwrite databases create-string-attribute --database-id $DatabaseId --collectio
 appwrite databases create-datetime-attribute --database-id $DatabaseId --collection-id "deleted_drive_items" --key "deletedAt" --required true
 appwrite databases create-datetime-attribute --database-id $DatabaseId --collection-id "deleted_drive_items" --key "restoredAt" --required false
 appwrite databases create-index --database-id $DatabaseId --collection-id "deleted_drive_items" --key "byTeacherAndDeletedAt" --type "key" --attributes "teacherId" "deletedAt"
+
+# ranking_items
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "tabId" --size 64 --required true
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "title" --size 128 --required false
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "imageDriveFileId" --size 128 --required true
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "imageMimeType" --size 64 --required false
+appwrite databases create-integer-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "sortOrder" --required true --min 0 --max 100000
+appwrite databases create-index --database-id $DatabaseId --collection-id "ranking_items" --key "byTab" --type "key" --attributes "tabId"
+appwrite databases create-index --database-id $DatabaseId --collection-id "ranking_items" --key "byTabAndSort" --type "key" --attributes "tabId" "sortOrder"
+
+# ranking_submissions
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "classId" --size 64 --required true
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "tabId" --size 64 --required true
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "rankingItemId" --size 64 --required true
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "studentName" --size 64 --required true
+appwrite databases create-integer-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "score" --required true --min 1 --max 10
+appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "comment" --size 500 --required false
+appwrite databases create-datetime-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "createdAt" --required true
+appwrite databases create-datetime-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "updatedAt" --required true
+appwrite databases create-index --database-id $DatabaseId --collection-id "ranking_submissions" --key "byTab" --type "key" --attributes "tabId"
+appwrite databases create-index --database-id $DatabaseId --collection-id "ranking_submissions" --key "byTabStudentItem" --type "key" --attributes "tabId" "studentName" "rankingItemId"
 
 Write-Host "Done. Next: configure permissions per-doc for public student link access."
 

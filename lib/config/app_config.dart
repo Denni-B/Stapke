@@ -9,8 +9,11 @@ class AppConfig {
     required this.appwriteClassesCollectionId,
     required this.appwriteTabsCollectionId,
     required this.appwriteCardsCollectionId,
+    required this.appwriteRankingItemsCollectionId,
+    required this.appwriteRankingSubmissionsCollectionId,
     required this.appwriteDriveConnectionsCollectionId,
     required this.driveFunctionId,
+    required this.rankingFunctionId,
     required this.googleApiKey,
   });
 
@@ -21,9 +24,12 @@ class AppConfig {
   final String appwriteClassesCollectionId;
   final String appwriteTabsCollectionId;
   final String appwriteCardsCollectionId;
+  final String appwriteRankingItemsCollectionId;
+  final String appwriteRankingSubmissionsCollectionId;
   final String appwriteDriveConnectionsCollectionId;
 
   final String driveFunctionId;
+  final String rankingFunctionId;
   final String googleApiKey;
 
   static const AppConfig fromEnv = AppConfig(
@@ -51,6 +57,14 @@ class AppConfig {
       'APPWRITE_CARDS_COLLECTION_ID',
       defaultValue: 'cards',
     ),
+    appwriteRankingItemsCollectionId: String.fromEnvironment(
+      'APPWRITE_RANKING_ITEMS_COLLECTION_ID',
+      defaultValue: 'ranking_items',
+    ),
+    appwriteRankingSubmissionsCollectionId: String.fromEnvironment(
+      'APPWRITE_RANKING_SUBMISSIONS_COLLECTION_ID',
+      defaultValue: 'ranking_submissions',
+    ),
     appwriteDriveConnectionsCollectionId: String.fromEnvironment(
       'APPWRITE_DRIVE_CONNECTIONS_COLLECTION_ID',
       defaultValue: 'drive_connections',
@@ -58,6 +72,10 @@ class AppConfig {
     driveFunctionId: String.fromEnvironment(
       'APPWRITE_DRIVE_FUNCTION_ID',
       defaultValue: 'drive',
+    ),
+    rankingFunctionId: String.fromEnvironment(
+      'APPWRITE_RANKING_FUNCTION_ID',
+      defaultValue: 'ranking',
     ),
     googleApiKey: String.fromEnvironment(
       'GOOGLE_API_KEY',

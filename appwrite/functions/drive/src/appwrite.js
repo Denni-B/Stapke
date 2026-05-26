@@ -28,6 +28,10 @@ export function schemaIds() {
     classesCollectionId: env('APPWRITE_CLASSES_COLLECTION_ID', 'classes'),
     tabsCollectionId: env('APPWRITE_TABS_COLLECTION_ID', 'tabs'),
     cardsCollectionId: env('APPWRITE_CARDS_COLLECTION_ID', 'cards'),
+    rankingItemsCollectionId: env(
+      'APPWRITE_RANKING_ITEMS_COLLECTION_ID',
+      'ranking_items',
+    ),
   };
 }
 
@@ -108,7 +112,8 @@ export async function getClassByPublicToken({ databases, publicToken }) {
 }
 
 export async function classContainsFileId({ databases, classId, fileId }) {
-  const { databaseId, tabsCollectionId, cardsCollectionId } = schemaIds();
+  const { databaseId, tabsCollectionId, cardsCollectionId, rankingItemsCollectionId } =
+    schemaIds();
   const tabs = await databases.listDocuments(databaseId, tabsCollectionId, [
     Query.equal('classId', classId),
     Query.limit(200),
@@ -122,6 +127,16 @@ export async function classContainsFileId({ databases, classId, fileId }) {
     ]);
     for (const c of cards.documents) {
       if (c.imageDriveFileId === fileId || c.audioDriveFileId === fileId) {
+        return true;
+      }
+    }
+
+    const items = await databases.listDocuments(databaseId, rankingItemsCollectionId, [
+      Query.equal('tabId', tab.$id),
+      Query.limit(200),
+    ]);
+    for (const item of items.documents) {
+      if (item.imageDriveFileId === fileId) {
         return true;
       }
     }

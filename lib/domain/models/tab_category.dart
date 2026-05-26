@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../tab_kind.dart';
+
 @immutable
 class TabCategory {
   const TabCategory({
@@ -8,6 +10,7 @@ class TabCategory {
     required this.title,
     required this.sortOrder,
     required this.driveFolderId,
+    required this.tabKind,
     this.tabColorHex,
   });
 
@@ -17,8 +20,13 @@ class TabCategory {
   final int sortOrder;
   final String? driveFolderId;
 
+  /// `cards` (default) or `ranking`.
+  final String tabKind;
+
   /// Optional `#RRGGBB` accent for student UI and tab list.
   final String? tabColorHex;
+
+  bool get isRanking => TabKind.isRanking(tabKind);
 
   static TabCategory fromDoc(Map<String, dynamic> doc) {
     final dynamic rawHex = doc['tabColorHex'];
@@ -31,6 +39,7 @@ class TabCategory {
       driveFolderId: (doc['driveFolderId'] as String?)?.trim().isEmpty == true
           ? null
           : (doc['driveFolderId'] as String?),
+      tabKind: TabKind.normalize(doc['tabKind'] as String?),
       tabColorHex: hex,
     );
   }
