@@ -9,7 +9,6 @@ class AppConfig {
     required this.appwriteClassesCollectionId,
     required this.appwriteTabsCollectionId,
     required this.appwriteCardsCollectionId,
-    required this.appwriteRankingItemsCollectionId,
     required this.appwriteRankingSubmissionsCollectionId,
     required this.appwriteDriveConnectionsCollectionId,
     required this.driveFunctionId,
@@ -24,7 +23,6 @@ class AppConfig {
   final String appwriteClassesCollectionId;
   final String appwriteTabsCollectionId;
   final String appwriteCardsCollectionId;
-  final String appwriteRankingItemsCollectionId;
   final String appwriteRankingSubmissionsCollectionId;
   final String appwriteDriveConnectionsCollectionId;
 
@@ -56,10 +54,6 @@ class AppConfig {
     appwriteCardsCollectionId: String.fromEnvironment(
       'APPWRITE_CARDS_COLLECTION_ID',
       defaultValue: 'cards',
-    ),
-    appwriteRankingItemsCollectionId: String.fromEnvironment(
-      'APPWRITE_RANKING_ITEMS_COLLECTION_ID',
-      defaultValue: 'ranking_items',
     ),
     appwriteRankingSubmissionsCollectionId: String.fromEnvironment(
       'APPWRITE_RANKING_SUBMISSIONS_COLLECTION_ID',

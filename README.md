@@ -16,7 +16,6 @@ Optional overrides:
 - `APPWRITE_CLASSES_COLLECTION_ID` (default `classes`)
 - `APPWRITE_TABS_COLLECTION_ID` (default `tabs`)
 - `APPWRITE_CARDS_COLLECTION_ID` (default `cards`)
-- `APPWRITE_RANKING_ITEMS_COLLECTION_ID` (default `ranking_items`)
 - `APPWRITE_RANKING_SUBMISSIONS_COLLECTION_ID` (default `ranking_submissions`)
 - `APPWRITE_DRIVE_CONNECTIONS_COLLECTION_ID` (default `drive_connections`)
 - `APPWRITE_DRIVE_FUNCTION_ID` (default `drive`)

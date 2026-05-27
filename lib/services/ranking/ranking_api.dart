@@ -32,10 +32,18 @@ class RankingApi {
   final Functions functions;
   final String functionId;
 
-  Map<String, dynamic> _decodeJsonObject(String responseBody, {required String context}) {
+  Map<String, dynamic> _decodeJsonObject(
+    String responseBody, {
+    required String context,
+    int? statusCode,
+  }) {
     final body = responseBody.trim();
     if (body.isEmpty) {
-      throw StateError('$context: lege antwoordtekst.');
+      throw StateError(
+        '$context: lege antwoordtekst'
+        '${statusCode != null ? ' (status $statusCode)' : ''}. '
+        'Check in Appwrite Console → Functions → $functionId → Executions/Logs voor details.',
+      );
     }
     final decoded = jsonDecode(body);
     if (decoded is! Map) {
@@ -64,7 +72,11 @@ class RankingApi {
       }),
       headers: <String, String>{'content-type': 'application/json'},
     );
-    final data = _decodeJsonObject(result.responseBody, context: 'Ranking submit');
+    final data = _decodeJsonObject(
+      result.responseBody,
+      context: 'Ranking submit',
+      statusCode: result.responseStatusCode,
+    );
     if (data['ok'] != true) {
       final msg = data['message'] as String? ?? 'Stem opslaan mislukt.';
       throw StateError(msg);
@@ -87,7 +99,11 @@ class RankingApi {
       }),
       headers: <String, String>{'content-type': 'application/json'},
     );
-    final data = _decodeJsonObject(result.responseBody, context: 'Ranking my-votes');
+    final data = _decodeJsonObject(
+      result.responseBody,
+      context: 'Ranking my-votes',
+      statusCode: result.responseStatusCode,
+    );
     final votesAny = data['votes'];
     if (votesAny is! List) return const <StudentVote>[];
     return votesAny.map((v) {

@@ -3,6 +3,7 @@ import 'dart:convert';
 class CardTypeIds {
   static const String soundImage = 'sound_image';
   static const String imageFillIn = 'image_fill_in';
+  static const String ranking = 'ranking';
 }
 
 class CardTypeOption {
@@ -15,6 +16,7 @@ class CardTypeRegistry {
   static const List<CardTypeOption> teacherOptions = <CardTypeOption>[
     CardTypeOption(id: CardTypeIds.soundImage, label: 'Geluidskaart'),
     CardTypeOption(id: CardTypeIds.imageFillIn, label: 'Afbeelding + invulwoord'),
+    CardTypeOption(id: CardTypeIds.ranking, label: 'Ranking kaart'),
   ];
 
   static String normalizeType(String? raw) {

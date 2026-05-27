@@ -20,6 +20,7 @@ import '../../domain/models/image_annotation.dart';
 import '../../utils/tab_color.dart';
 import '../../widgets/tab_color_picker_dialog.dart';
 import 'teacher_navigation.dart';
+import 'teacher_ranking_results_screen.dart';
 
 class TeacherTabScreen extends ConsumerStatefulWidget {
   const TeacherTabScreen({super.key, required this.userId, required this.tab});
@@ -441,6 +442,19 @@ class _TeacherTabScreenState extends ConsumerState<TeacherTabScreen> {
               : null,
         ),
       ),
+      if (_tab.isRanking)
+        IconButton(
+          tooltip: 'Resultaten',
+          icon: const Icon(Icons.bar_chart),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => TeacherRankingResultsScreen(
+                userId: widget.userId,
+                tab: _tab,
+              ),
+            ),
+          ),
+        ),
       PopupMenuButton<String>(
         onSelected: (value) async {
           if (value == 'color') {
@@ -1559,6 +1573,12 @@ class _CreateCardScreenState extends ConsumerState<_CreateCardScreen> {
     _stopPreview();
     final hasImage = (_imageDriveFileId != null) || (_imageBytes != null);
     final hasAudio = (_audioDriveFileId != null) || (_audioBytes != null);
+    if (_cardType == CardTypeIds.ranking && !hasImage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kies een afbeelding.')),
+      );
+      return;
+    }
     if (_cardType == CardTypeIds.imageFillIn && !hasImage) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Kies een afbeelding.')),
@@ -1584,8 +1604,10 @@ class _CreateCardScreenState extends ConsumerState<_CreateCardScreen> {
       return;
     }
 
-    final String titleText = _title.text.trim();
-    if (titleText.isEmpty) {
+    final String titleText = (_cardType == CardTypeIds.ranking)
+        ? 'Ranking'
+        : _title.text.trim();
+    if (_cardType != CardTypeIds.ranking && titleText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Titel is verplicht.')),
       );
@@ -1673,12 +1695,12 @@ class _CreateCardScreenState extends ConsumerState<_CreateCardScreen> {
                 ))
           : null;
 
-      final String? annotationsJson = _imageAnnotations.isEmpty
-          ? ''
-          : ImageAnnotations(
-              version: ImageAnnotations.currentVersion,
-              items: List<ImageAnnotationItem>.from(_imageAnnotations),
-            ).toJsonString();
+    final String? annotationsJson = (_cardType == CardTypeIds.ranking || _imageAnnotations.isEmpty)
+        ? ''
+        : ImageAnnotations(
+            version: ImageAnnotations.currentVersion,
+            items: List<ImageAnnotationItem>.from(_imageAnnotations),
+          ).toJsonString();
 
       final CardItem result;
       if (widget.existing != null) {
@@ -1796,13 +1818,14 @@ class _CreateCardScreenState extends ConsumerState<_CreateCardScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: <Widget>[
-          TextField(
-            controller: _title,
-            decoration: const InputDecoration(
-              labelText: 'Titel *',
-              border: OutlineInputBorder(),
+          if (_cardType != CardTypeIds.ranking)
+            TextField(
+              controller: _title,
+              decoration: const InputDecoration(
+                labelText: 'Titel *',
+                border: OutlineInputBorder(),
+              ),
             ),
-          ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: _cardType,
@@ -1821,7 +1844,23 @@ class _CreateCardScreenState extends ConsumerState<_CreateCardScreen> {
                 ? null
                 : (v) {
                     if (v == null) return;
-                    setState(() => _cardType = v);
+                    setState(() {
+                      _cardType = v;
+                      if (_cardType == CardTypeIds.ranking) {
+                        // Ranking kaart: alleen afbeelding.
+                        _audioBytes = null;
+                        _audioMime = null;
+                        _audioName = null;
+                        _audioDriveFileId = null;
+                        _imageAnnotations.clear();
+                        _arrowFrom = null;
+                        _arrowTo = null;
+                        _selectedAnnotIndex = null;
+                        _arrowDragTarget = null;
+                        _moveLastPosPx = null;
+                        _lastImageRect = null;
+                      }
+                    });
                   },
           ),
           const SizedBox(height: 12),
@@ -1897,54 +1936,55 @@ class _CreateCardScreenState extends ConsumerState<_CreateCardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.start,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: <Widget>[
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 420),
-                          child: SegmentedButton<_ImageAnnotTool>(
-                            segments: const <ButtonSegment<_ImageAnnotTool>>[
-                              ButtonSegment<_ImageAnnotTool>(
-                                value: _ImageAnnotTool.arrow,
-                                label: Text('Pijl'),
-                                icon: Icon(Icons.arrow_right_alt),
-                              ),
-                              ButtonSegment<_ImageAnnotTool>(
-                                value: _ImageAnnotTool.text,
-                                label: Text('Tekst'),
-                                icon: Icon(Icons.text_fields),
-                              ),
-                              ButtonSegment<_ImageAnnotTool>(
-                                value: _ImageAnnotTool.move,
-                                label: Text('Verplaats'),
-                                icon: Icon(Icons.open_with_rounded),
-                              ),
-                            ],
-                            selected: <_ImageAnnotTool>{_annotTool},
-                            onSelectionChanged: (s) {
-                              setState(() {
-                                _annotTool = s.first;
-                                _arrowFrom = null;
-                                _arrowTo = null;
-                                _arrowDragTarget = null;
-                                _moveLastPosPx = null;
-                              });
-                            },
+                  if (_cardType != CardTypeIds.ranking)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.start,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: <Widget>[
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: SegmentedButton<_ImageAnnotTool>(
+                              segments: const <ButtonSegment<_ImageAnnotTool>>[
+                                ButtonSegment<_ImageAnnotTool>(
+                                  value: _ImageAnnotTool.arrow,
+                                  label: Text('Pijl'),
+                                  icon: Icon(Icons.arrow_right_alt),
+                                ),
+                                ButtonSegment<_ImageAnnotTool>(
+                                  value: _ImageAnnotTool.text,
+                                  label: Text('Tekst'),
+                                  icon: Icon(Icons.text_fields),
+                                ),
+                                ButtonSegment<_ImageAnnotTool>(
+                                  value: _ImageAnnotTool.move,
+                                  label: Text('Verplaats'),
+                                  icon: Icon(Icons.open_with_rounded),
+                                ),
+                              ],
+                              selected: <_ImageAnnotTool>{_annotTool},
+                              onSelectionChanged: (s) {
+                                setState(() {
+                                  _annotTool = s.first;
+                                  _arrowFrom = null;
+                                  _arrowTo = null;
+                                  _arrowDragTarget = null;
+                                  _moveLastPosPx = null;
+                                });
+                              },
+                            ),
                           ),
-                        ),
-                        FilledButton.tonalIcon(
-                          onPressed: _imageAnnotations.isEmpty ? null : _clearAnnotations,
-                          icon: const Icon(Icons.delete_sweep_outlined),
-                          label: const Text('Wissen'),
-                        ),
-                      ],
+                          FilledButton.tonalIcon(
+                            onPressed: _imageAnnotations.isEmpty ? null : _clearAnnotations,
+                            icon: const Icon(Icons.delete_sweep_outlined),
+                            label: const Text('Wissen'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 520),

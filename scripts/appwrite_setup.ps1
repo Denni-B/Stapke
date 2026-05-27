@@ -49,10 +49,6 @@ cmd /c "appwrite databases get-collection --database-id $DatabaseId --collection
 if ($LASTEXITCODE -ne 0) {
   appwrite databases create-collection --database-id $DatabaseId --collection-id "deleted_drive_items" --name "Deleted Drive Items" --document-security true
 }
-cmd /c "appwrite databases get-collection --database-id $DatabaseId --collection-id ranking_items >nul 2>nul"
-if ($LASTEXITCODE -ne 0) {
-  appwrite databases create-collection --database-id $DatabaseId --collection-id "ranking_items" --name "Ranking Items" --document-security true
-}
 cmd /c "appwrite databases get-collection --database-id $DatabaseId --collection-id ranking_submissions >nul 2>nul"
 if ($LASTEXITCODE -ne 0) {
   appwrite databases create-collection --database-id $DatabaseId --collection-id "ranking_submissions" --name "Ranking Submissions" --document-security true
@@ -65,8 +61,6 @@ if ($LASTEXITCODE -ne 0) {
 appwrite databases update-collection --database-id $DatabaseId --collection-id "tabs" --permissions "read(\"any\")" "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
 # - cards: students list cards, teacher manages cards
 appwrite databases update-collection --database-id $DatabaseId --collection-id "cards" --permissions "read(\"any\")" "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
-# - ranking_items: same pattern as cards
-appwrite databases update-collection --database-id $DatabaseId --collection-id "ranking_items" --permissions "read(\"any\")" "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
 # - ranking_submissions: teacher-only data (writes via Appwrite Function with API key)
 appwrite databases update-collection --database-id $DatabaseId --collection-id "ranking_submissions" --permissions "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
 
@@ -118,15 +112,6 @@ appwrite databases create-string-attribute --database-id $DatabaseId --collectio
 appwrite databases create-datetime-attribute --database-id $DatabaseId --collection-id "deleted_drive_items" --key "deletedAt" --required true
 appwrite databases create-datetime-attribute --database-id $DatabaseId --collection-id "deleted_drive_items" --key "restoredAt" --required false
 appwrite databases create-index --database-id $DatabaseId --collection-id "deleted_drive_items" --key "byTeacherAndDeletedAt" --type "key" --attributes "teacherId" "deletedAt"
-
-# ranking_items
-appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "tabId" --size 64 --required true
-appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "title" --size 128 --required false
-appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "imageDriveFileId" --size 128 --required true
-appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "imageMimeType" --size 64 --required false
-appwrite databases create-integer-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "sortOrder" --required true --min 0 --max 100000
-appwrite databases create-index --database-id $DatabaseId --collection-id "ranking_items" --key "byTab" --type "key" --attributes "tabId"
-appwrite databases create-index --database-id $DatabaseId --collection-id "ranking_items" --key "byTabAndSort" --type "key" --attributes "tabId" "sortOrder"
 
 # ranking_submissions
 appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_submissions" --key "classId" --size 64 --required true

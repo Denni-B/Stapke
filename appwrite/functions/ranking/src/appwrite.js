@@ -19,7 +19,7 @@ export function schemaIds() {
     databaseId: env('APPWRITE_DATABASE_ID', 'teachers_help'),
     classesCollectionId: env('APPWRITE_CLASSES_COLLECTION_ID', 'classes'),
     tabsCollectionId: env('APPWRITE_TABS_COLLECTION_ID', 'tabs'),
-    rankingItemsCollectionId: env('APPWRITE_RANKING_ITEMS_COLLECTION_ID', 'ranking_items'),
+    cardsCollectionId: env('APPWRITE_CARDS_COLLECTION_ID', 'cards'),
     rankingSubmissionsCollectionId: env(
       'APPWRITE_RANKING_SUBMISSIONS_COLLECTION_ID',
       'ranking_submissions',
@@ -46,9 +46,10 @@ export async function getTab({ databases, tabId }) {
 }
 
 export async function getRankingItem({ databases, rankingItemId }) {
-  const { databaseId, rankingItemsCollectionId } = schemaIds();
+  // NOTE: we store votes per cardId. For a ranking tab, the "items" are normal cards.
+  const { databaseId, cardsCollectionId } = schemaIds();
   try {
-    return await databases.getDocument(databaseId, rankingItemsCollectionId, rankingItemId);
+    return await databases.getDocument(databaseId, cardsCollectionId, rankingItemId);
   } catch (_) {
     return null;
   }

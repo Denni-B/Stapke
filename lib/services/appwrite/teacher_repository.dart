@@ -5,7 +5,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/class_public_token.dart';
 import '../../domain/models/card_item.dart';
-import '../../domain/models/ranking_item.dart';
 import '../../domain/models/ranking_submission.dart';
 import '../../domain/models/tab_category.dart';
 import '../../domain/models/teachers_class.dart';
@@ -293,89 +292,10 @@ class TeacherRepository {
       attribute: 'tabId',
       equalsValue: tabId,
     );
-    await _deleteDocumentsWhereAttributeEquals(
-      collectionId: schema.rankingItemsCollectionId,
-      attribute: 'tabId',
-      equalsValue: tabId,
-    );
     await databases.deleteDocument(
       databaseId: schema.databaseId,
       collectionId: schema.tabsCollectionId,
       documentId: tabId,
-    );
-  }
-
-  Future<List<RankingItem>> listRankingItems({required String tabId}) async {
-    final models.DocumentList res = await databases.listDocuments(
-      databaseId: schema.databaseId,
-      collectionId: schema.rankingItemsCollectionId,
-      queries: <String>[
-        Query.equal('tabId', tabId),
-        Query.orderAsc('sortOrder'),
-      ],
-    );
-    return res.documents.map((d) => RankingItem.fromDoc(d.data)).toList();
-  }
-
-  Future<RankingItem> createRankingItem({
-    required String teacherId,
-    required String tabId,
-    required String imageDriveFileId,
-    required String imageMimeType,
-    String? title,
-    required int sortOrder,
-  }) async {
-    if (imageDriveFileId.trim().isEmpty) {
-      throw ArgumentError('Kies een afbeelding.');
-    }
-    final models.Document doc = await databases.createDocument(
-      databaseId: schema.databaseId,
-      collectionId: schema.rankingItemsCollectionId,
-      documentId: ID.unique(),
-      data: <String, dynamic>{
-        'tabId': tabId,
-        'title': title?.trim() ?? '',
-        'imageDriveFileId': imageDriveFileId.trim(),
-        'imageMimeType': imageMimeType.trim().isEmpty ? 'image/jpeg' : imageMimeType.trim(),
-        'sortOrder': sortOrder,
-      },
-      permissions: <String>[
-        Permission.read(Role.any()),
-        Permission.read(Role.user(teacherId)),
-        Permission.update(Role.user(teacherId)),
-        Permission.delete(Role.user(teacherId)),
-      ],
-    );
-    return RankingItem.fromDoc(doc.data);
-  }
-
-  Future<RankingItem> updateRankingItem({
-    required String itemId,
-    String? title,
-    int? sortOrder,
-  }) async {
-    final Map<String, dynamic> data = <String, dynamic>{};
-    if (title != null) data['title'] = title.trim();
-    if (sortOrder != null) data['sortOrder'] = sortOrder;
-    final models.Document doc = await databases.updateDocument(
-      databaseId: schema.databaseId,
-      collectionId: schema.rankingItemsCollectionId,
-      documentId: itemId,
-      data: data,
-    );
-    return RankingItem.fromDoc(doc.data);
-  }
-
-  Future<void> deleteRankingItem({required String itemId}) async {
-    await _deleteDocumentsWhereAttributeEquals(
-      collectionId: schema.rankingSubmissionsCollectionId,
-      attribute: 'rankingItemId',
-      equalsValue: itemId,
-    );
-    await databases.deleteDocument(
-      databaseId: schema.databaseId,
-      collectionId: schema.rankingItemsCollectionId,
-      documentId: itemId,
     );
   }
 

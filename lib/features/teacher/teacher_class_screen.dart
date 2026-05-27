@@ -14,7 +14,6 @@ import '../../services/drive/drive_api.dart';
 import '../../utils/tab_color.dart';
 import '../../widgets/tab_color_picker_dialog.dart';
 import 'teacher_navigation.dart';
-import 'teacher_ranking_screen.dart';
 import 'teacher_tab_screen.dart';
 
 class TeacherClassScreen extends ConsumerStatefulWidget {
@@ -665,9 +664,7 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
                   ),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => t.isRanking
-                          ? TeacherRankingScreen(userId: widget.userId, tab: t)
-                          : TeacherTabScreen(userId: widget.userId, tab: t),
+                      builder: (_) => TeacherTabScreen(userId: widget.userId, tab: t),
                     ),
                   ),
                 ),

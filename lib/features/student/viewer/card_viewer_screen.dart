@@ -347,6 +347,54 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                   ),
                 ],
               )
+            : (type == CardTypeIds.ranking)
+            ? Column(
+                children: <Widget>[
+                  Expanded(
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: ColoredBox(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            child: imageUrl == null
+                                ? const Center(child: Text('Afbeelding ontbreekt'))
+                                : Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Center(
+                                        child: Text('Afbeelding laden mislukt'),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Row(
+                      children: <Widget>[
+                        IconButton.filledTonal(
+                          onPressed: hasPrev ? () => _go(_index - 1) : null,
+                          icon: const Icon(Icons.arrow_left),
+                          tooltip: 'Vorige',
+                        ),
+                        const Spacer(),
+                        IconButton.filledTonal(
+                          onPressed: hasNext ? () => _go(_index + 1) : null,
+                          icon: const Icon(Icons.arrow_right),
+                          tooltip: 'Volgende',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
             : Column(
                 children: <Widget>[
                   Expanded(
