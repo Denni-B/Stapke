@@ -48,6 +48,10 @@ if ($LASTEXITCODE -ne 0) {
   appwrite databases create-collection --database-id $DatabaseId --collection-id "ranking_submissions" --name "Ranking Submissions" --document-security true
 }
 
+Write-Host "-> collection permissions"
+appwrite databases update-collection --database-id $DatabaseId --collection-id "ranking_items" --permissions "read(\"any\")" "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
+appwrite databases update-collection --database-id $DatabaseId --collection-id "ranking_submissions" --permissions "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
+
 Write-Host "-> ranking_items attributes"
 appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "tabId" --size 64 --required true
 appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "ranking_items" --key "title" --size 128 --required false

@@ -58,6 +58,18 @@ if ($LASTEXITCODE -ne 0) {
   appwrite databases create-collection --database-id $DatabaseId --collection-id "ranking_submissions" --name "Ranking Submissions" --document-security true
 }
 
+# Collection permissions
+# NOTE: `document-security true` is enabled, but Appwrite still requires
+# collection-level create permission for client SDK writes.
+# - tabs: students list tabs, teacher manages tabs
+appwrite databases update-collection --database-id $DatabaseId --collection-id "tabs" --permissions "read(\"any\")" "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
+# - cards: students list cards, teacher manages cards
+appwrite databases update-collection --database-id $DatabaseId --collection-id "cards" --permissions "read(\"any\")" "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
+# - ranking_items: same pattern as cards
+appwrite databases update-collection --database-id $DatabaseId --collection-id "ranking_items" --permissions "read(\"any\")" "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
+# - ranking_submissions: teacher-only data (writes via Appwrite Function with API key)
+appwrite databases update-collection --database-id $DatabaseId --collection-id "ranking_submissions" --permissions "read(\"users\")" "create(\"users\")" "update(\"users\")" "delete(\"users\")"
+
 # Attributes and indexes
 # classes
 appwrite databases create-string-attribute --database-id $DatabaseId --collection-id "classes" --key "teacherId" --size 64 --required true
