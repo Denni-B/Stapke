@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/appwrite/student_repository.dart';
+import '../../services/classroom/classroom_api.dart';
 import '../../services/student/student_session.dart';
 import 'student_name_screen.dart';
 import 'tab_picker_screen.dart';
@@ -46,6 +47,20 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
       }
       final name = await ref.read(studentSessionProvider).getName(widget.publicToken);
       if (!mounted) return;
+      if (name != null && name.trim().isNotEmpty) {
+        try {
+          final studentId =
+              await ref.read(studentSessionProvider).getOrCreateStudentId(widget.publicToken);
+          await ref.read(classroomApiProvider).registerStudent(
+                publicToken: widget.publicToken,
+                classId: clazz.id,
+                studentId: studentId,
+                name: name,
+              );
+        } catch (_) {
+          // Best effort: keep student flow usable offline / when function is not deployed yet.
+        }
+      }
       setState(() {
         _className = clazz.name;
         _classId = clazz.id;

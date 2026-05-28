@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 Text(
-                  'Lerarenhulp',
+                  'Dennis\'s App',
                   style: Theme.of(context).textTheme.headlineLarge,
                   textAlign: TextAlign.center,
                 ),
@@ -38,13 +38,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 FilledButton.icon(
                   onPressed: () => context.go('/teacher'),
                   icon: const Icon(Icons.admin_panel_settings),
-                  label: const Text('Doorgaan als leraar (beheer)'),
+                  label: const Text('Doorgaan als spelmaster (a.k.a Denni)'),
                 ),
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 16),
                 Text(
-                  'Toegang voor leerlingen',
+                  'Toegang voor Jukkels, Dukkels en sukkels',
                   style: Theme.of(context).textTheme.titleMedium,
                   textAlign: TextAlign.center,
                 ),
@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: _publicTokenController,
                   decoration: const InputDecoration(
-                    labelText: 'Klascode / linktoken',
+                    labelText: 'Spel code',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     context.go('/class/$token');
                   },
                   icon: const Icon(Icons.school),
-                  label: const Text('Klas openen'),
+                  label: const Text('Spel openen'),
                 ),
               ],
             ),

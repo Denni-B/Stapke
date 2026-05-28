@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/card_item.dart';
 import '../../domain/cards/card_types.dart';
+import '../../domain/models/class_student.dart';
 import '../../domain/models/tab_category.dart';
 import '../../services/appwrite/teacher_repository.dart';
 import '../../services/audio/app_audio_player.dart';
@@ -20,6 +21,8 @@ import '../../domain/models/image_annotation.dart';
 import '../../utils/tab_color.dart';
 import '../../widgets/tab_color_picker_dialog.dart';
 import 'teacher_navigation.dart';
+import 'teacher_name_voting_results_screen.dart';
+import 'teacher_name_voting_settings_dialog.dart';
 import 'teacher_ranking_results_screen.dart';
 
 class TeacherTabScreen extends ConsumerStatefulWidget {
@@ -68,12 +71,18 @@ class _TeacherTabScreenState extends ConsumerState<TeacherTabScreen> {
   List<CardItem> _cards = <CardItem>[];
   bool _orderSaving = false;
 
+  bool _studentsLoading = true;
+  Object? _studentsLoadError;
+  List<ClassStudent> _students = const <ClassStudent>[];
+
   @override
   void initState() {
     super.initState();
     _tab = widget.tab;
     // ignore: unawaited_futures
     _reloadCards();
+    // ignore: unawaited_futures
+    _reloadStudents();
     _audioEndedSub = _listAudio.onEnded.listen((_) {
       if (!mounted) return;
       setState(() {
@@ -103,6 +112,8 @@ class _TeacherTabScreenState extends ConsumerState<TeacherTabScreen> {
       _tab = widget.tab;
       // ignore: unawaited_futures
       _reloadCards();
+      // ignore: unawaited_futures
+      _reloadStudents();
     } else if (oldWidget.tab.title != widget.tab.title ||
         oldWidget.tab.tabColorHex != widget.tab.tabColorHex) {
       _tab = widget.tab;
@@ -127,6 +138,29 @@ class _TeacherTabScreenState extends ConsumerState<TeacherTabScreen> {
       setState(() {
         _cardsLoadError = e;
         _cardsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _reloadStudents() async {
+    if (!mounted) return;
+    setState(() {
+      _studentsLoading = true;
+      _studentsLoadError = null;
+    });
+    try {
+      final list =
+          await ref.read(teacherRepositoryProvider).listClassStudents(classId: _tab.classId);
+      if (!mounted) return;
+      setState(() {
+        _students = list;
+        _studentsLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _studentsLoadError = e;
+        _studentsLoading = false;
       });
     }
   }
@@ -455,6 +489,46 @@ class _TeacherTabScreenState extends ConsumerState<TeacherTabScreen> {
             ),
           ),
         ),
+      if (_tab.isNameVoting)
+        IconButton(
+          tooltip: 'Resultaten',
+          icon: const Icon(Icons.pie_chart_outline),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => TeacherNameVotingResultsScreen(
+                userId: widget.userId,
+                tab: _tab,
+              ),
+            ),
+          ),
+        ),
+      if (_tab.isNameVoting)
+        IconButton(
+          tooltip: 'Instellingen',
+          icon: const Icon(Icons.tune_rounded),
+          onPressed: () async {
+            final picked = await showNameVotingSettingsDialog(
+              context,
+              currentWeights: _tab.nameVotingWeights,
+            );
+            if (picked == null || !context.mounted) return;
+            try {
+              final updated = await ref
+                  .read(teacherRepositoryProvider)
+                  .updateNameVotingWeights(tabId: _tab.id, weights: picked);
+              if (!context.mounted) return;
+              setState(() => _tab = updated);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Instellingen opgeslagen.')),
+              );
+            } catch (e) {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Opslaan mislukt: $e')),
+              );
+            }
+          },
+        ),
       PopupMenuButton<String>(
         onSelected: (value) async {
           if (value == 'color') {
@@ -488,6 +562,17 @@ class _TeacherTabScreenState extends ConsumerState<TeacherTabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_tab.isNameVoting) {
+      return Scaffold(
+        appBar: buildTabColoredAppBar(
+          context,
+          title: _tab.title,
+          tabColorHex: _tab.tabColorHex,
+          actions: _tabAppBarActions(context),
+        ),
+        body: _buildNameVotingTeacherBody(context),
+      );
+    }
     if (_cardsLoading) {
       return Scaffold(
         appBar: buildTabColoredAppBar(
@@ -610,6 +695,42 @@ class _TeacherTabScreenState extends ConsumerState<TeacherTabScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNameVotingTeacherBody(BuildContext context) {
+    if (_studentsLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_studentsLoadError != null) {
+      return Center(child: Text('Fout: $_studentsLoadError'));
+    }
+    if (_students.isEmpty) {
+      return const Center(child: Text('Nog geen leerlingen in deze klas.'));
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: <Widget>[
+        Text('Leerlingen', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        Text(
+          'Dit is de namenlijst waar leerlingen op kunnen stemmen.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 12),
+        ..._students.map(
+          (s) => Card(
+            child: ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text(s.name),
+              subtitle: Text('ID: ${s.studentId}'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

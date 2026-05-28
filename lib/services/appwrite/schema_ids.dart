@@ -11,6 +11,7 @@ class SchemaIds {
     required this.cardsCollectionId,
     required this.rankingSubmissionsCollectionId,
     required this.driveConnectionsCollectionId,
+    required this.classStudentsCollectionId,
   });
 
   factory SchemaIds.fromConfig(AppConfig config) {
@@ -21,6 +22,7 @@ class SchemaIds {
       cardsCollectionId: config.appwriteCardsCollectionId,
       rankingSubmissionsCollectionId: config.appwriteRankingSubmissionsCollectionId,
       driveConnectionsCollectionId: config.appwriteDriveConnectionsCollectionId,
+      classStudentsCollectionId: config.appwriteClassStudentsCollectionId,
     );
   }
 
@@ -30,5 +32,6 @@ class SchemaIds {
   final String cardsCollectionId;
   final String rankingSubmissionsCollectionId;
   final String driveConnectionsCollectionId;
+  final String classStudentsCollectionId;
 }
 

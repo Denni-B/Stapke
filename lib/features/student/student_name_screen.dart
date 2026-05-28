@@ -73,7 +73,7 @@ class _StudentNameScreenState extends ConsumerState<StudentNameScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Vul je naam in zodat de leerkracht weet wie heeft gestemd.',
+                  'Vul je naam in zodat oppermeester Denni weet wie je bent.',
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),

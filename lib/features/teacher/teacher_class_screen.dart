@@ -526,6 +526,98 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
                     icon: const Icon(Icons.leaderboard),
                     label: const Text('Nieuwe ranking'),
                   ),
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      final title = await _promptText(
+                        context,
+                        dialogTitle: 'Nieuwe stemming',
+                        fieldLabel: 'Titel stemming',
+                        initial: null,
+                        confirmLabel: 'Aanmaken',
+                      );
+                      if (title == null) return;
+                      if (!context.mounted) return;
+                      final String? pickedHex =
+                          await showTabColorPickerDialog(context, currentHex: null);
+                      if (!context.mounted) return;
+                      final sortOrder = tabs.length;
+                      try {
+                        final created = await repo.createTab(
+                          teacherId: widget.userId,
+                          classId: widget.clazz.id,
+                          title: title,
+                          sortOrder: sortOrder,
+                          tabColorHex: pickedHex == null || pickedHex.isEmpty ? null : pickedHex,
+                          tabKind: TabKind.nameVoting,
+                        );
+                        // Default weights: 3-2-1
+                        try {
+                          await repo.updateNameVotingWeights(
+                            tabId: created.id,
+                            weights: const <int>[3, 2, 1],
+                          );
+                        } catch (_) {
+                          // Best effort.
+                        }
+                        // Best effort Drive folder structure (align with other types).
+                        try {
+                          final drive = ref.read(driveApiProvider);
+                          final root = await drive.getRootFolderId();
+                          if (root.trim().isNotEmpty) {
+                            final appFolder =
+                                await drive.ensureFolder(parentId: root, name: 'Teachers Help');
+                            final classesFolder =
+                                await drive.ensureFolder(parentId: appFolder, name: 'Klassen');
+                            final classFolder = widget.clazz.driveFolderId?.trim().isNotEmpty == true
+                                ? widget.clazz.driveFolderId!.trim()
+                                : await drive.ensureFolder(
+                                    parentId: classesFolder,
+                                    name: widget.clazz.name,
+                                  );
+                            if (widget.clazz.driveFolderId == null ||
+                                widget.clazz.driveFolderId!.trim().isEmpty) {
+                              await repo.setClassDriveFolderId(
+                                classId: widget.clazz.id,
+                                driveFolderId: classFolder,
+                              );
+                            }
+                            final votingsFolder = await drive.ensureFolder(
+                              parentId: classFolder,
+                              name: 'Stemmingen',
+                            );
+                            final votingFolder = await drive.ensureFolder(
+                              parentId: votingsFolder,
+                              name: created.title,
+                            );
+                            await repo.setTabDriveFolderId(
+                              tabId: created.id,
+                              driveFolderId: votingFolder,
+                            );
+                          }
+                        } catch (_) {
+                          // Best effort.
+                        }
+                        if (!context.mounted) return;
+                        setState(() {
+                          final next = <TabCategory>[...tabs, created]
+                            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+                          _tabsFuture = Future.value(next);
+                        });
+                        // ignore: unawaited_futures
+                        Future<void>.delayed(const Duration(milliseconds: 400), () async {
+                          if (!mounted) return;
+                          _refreshTabs();
+                        });
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Stemming aanmaken mislukt: $e')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.how_to_vote_outlined),
+                    label: const Text('Nieuwe stemming'),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -536,9 +628,10 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
                   leading: _ClassTabLeading(
                     tabColorHex: t.tabColorHex,
                     isRanking: t.isRanking,
+                    isNameVoting: t.isNameVoting,
                   ),
                   title: Text(t.title),
-                  subtitle: Text(t.isRanking ? 'Ranking' : 'Tabblad'),
+                  subtitle: Text(t.isRanking ? 'Ranking' : (t.isNameVoting ? 'Stemming' : 'Tabblad')),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
@@ -679,14 +772,21 @@ class _TeacherClassScreenState extends ConsumerState<TeacherClassScreen> {
 }
 
 class _ClassTabLeading extends StatelessWidget {
-  const _ClassTabLeading({required this.tabColorHex, this.isRanking = false});
+  const _ClassTabLeading({
+    required this.tabColorHex,
+    this.isRanking = false,
+    this.isNameVoting = false,
+  });
 
   final String? tabColorHex;
   final bool isRanking;
+  final bool isNameVoting;
 
   @override
   Widget build(BuildContext context) {
-    final icon = isRanking ? Icons.leaderboard : Icons.folder_outlined;
+    final icon = isRanking
+        ? Icons.leaderboard
+        : (isNameVoting ? Icons.how_to_vote_outlined : Icons.folder_outlined);
     final Color? c = parseTabColorHex(tabColorHex);
     if (c == null) {
       return CircleAvatar(

@@ -11,8 +11,10 @@ class AppConfig {
     required this.appwriteCardsCollectionId,
     required this.appwriteRankingSubmissionsCollectionId,
     required this.appwriteDriveConnectionsCollectionId,
+    required this.appwriteClassStudentsCollectionId,
     required this.driveFunctionId,
     required this.rankingFunctionId,
+    required this.classroomFunctionId,
     required this.googleApiKey,
   });
 
@@ -25,9 +27,11 @@ class AppConfig {
   final String appwriteCardsCollectionId;
   final String appwriteRankingSubmissionsCollectionId;
   final String appwriteDriveConnectionsCollectionId;
+  final String appwriteClassStudentsCollectionId;
 
   final String driveFunctionId;
   final String rankingFunctionId;
+  final String classroomFunctionId;
   final String googleApiKey;
 
   static const AppConfig fromEnv = AppConfig(
@@ -63,6 +67,10 @@ class AppConfig {
       'APPWRITE_DRIVE_CONNECTIONS_COLLECTION_ID',
       defaultValue: 'drive_connections',
     ),
+    appwriteClassStudentsCollectionId: String.fromEnvironment(
+      'APPWRITE_CLASS_STUDENTS_COLLECTION_ID',
+      defaultValue: 'class_students',
+    ),
     driveFunctionId: String.fromEnvironment(
       'APPWRITE_DRIVE_FUNCTION_ID',
       defaultValue: 'drive',
@@ -70,6 +78,10 @@ class AppConfig {
     rankingFunctionId: String.fromEnvironment(
       'APPWRITE_RANKING_FUNCTION_ID',
       defaultValue: 'ranking',
+    ),
+    classroomFunctionId: String.fromEnvironment(
+      'APPWRITE_CLASSROOM_FUNCTION_ID',
+      defaultValue: 'classroom',
     ),
     googleApiKey: String.fromEnvironment(
       'GOOGLE_API_KEY',

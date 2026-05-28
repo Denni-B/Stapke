@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'ranking_viewer_screen.dart';
+import 'name_voting_viewer_screen.dart';
 import 'viewer/card_viewer_screen.dart';
 import '../../services/appwrite/student_repository.dart';
 import '../../domain/models/tab_category.dart';
@@ -80,9 +81,12 @@ class TabPickerScreen extends ConsumerWidget {
               final Color iconColor =
                   accent != null ? foregroundOnTabColor(accent) : theme.colorScheme.onSurfaceVariant;
               final bool isRanking = tab.isRanking;
+              final bool isNameVoting = tab.isNameVoting;
               return ListTile(
                 leading: Icon(
-                  isRanking ? Icons.leaderboard : Icons.folder_outlined,
+                  isRanking
+                      ? Icons.leaderboard
+                      : (isNameVoting ? Icons.how_to_vote_outlined : Icons.folder_outlined),
                   color: iconColor,
                 ),
                 tileColor: tileBg,
@@ -98,7 +102,9 @@ class TabPickerScreen extends ConsumerWidget {
                   ),
                 ),
                 subtitle: Text(
-                  isRanking ? 'Ranking · $className' : 'Tabblad · $className',
+                  isRanking
+                      ? 'Ranking · $className'
+                      : (isNameVoting ? 'Stemmen · $className' : 'Tabblad · $className'),
                   style: TextStyle(color: subtitleColor),
                 ),
                 trailing: Icon(Icons.chevron_right, color: iconColor),
@@ -112,6 +118,18 @@ class TabPickerScreen extends ConsumerWidget {
                           tabTitle: tab.title,
                           tabColorHex: tab.tabColorHex,
                           studentName: studentName,
+                        ),
+                      ),
+                    );
+                  } else if (isNameVoting) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => NameVotingViewerScreen(
+                          publicToken: publicToken,
+                          classId: classId,
+                          tabId: tab.id,
+                          tabTitle: tab.title,
+                          tabColorHex: tab.tabColorHex,
                         ),
                       ),
                     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/card_item.dart';
@@ -28,6 +29,7 @@ class RankingViewerScreen extends ConsumerStatefulWidget {
 }
 
 class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
+  int _index = 0;
   bool _loading = true;
   Object? _loadError;
   List<CardItem> _items = const <CardItem>[];
@@ -35,15 +37,21 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
   final Map<String, int> _scores = <String, int>{};
   final Map<String, bool> _saving = <String, bool>{};
   final Map<String, bool> _saved = <String, bool>{};
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _focusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -64,8 +72,6 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
           studentName: widget.studentName,
         );
       } catch (e) {
-        // Don't block the ranking UI when votes cannot be loaded (e.g. function not deployed).
-        // The student can still submit; we just won't prefill previous votes.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Kon eerdere stemmen niet laden: $e')),
@@ -82,9 +88,10 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
       }
       setState(() {
         _items = items;
+        _index = 0;
         _loading = false;
       });
-      await _primeImages();
+      await _primeForIndex(0);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -94,11 +101,12 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
     }
   }
 
-  Future<void> _primeImages() async {
+  Future<void> _primeForIndex(int idx) async {
+    if (idx < 0 || idx >= _items.length) return;
     final drive = ref.read(driveApiProvider);
-    for (final item in _items) {
-      final fileId = item.imageDriveFileId;
-      if (fileId.trim().isEmpty || _imageUrlCache.containsKey(fileId)) continue;
+
+    Future<void> ensure(String fileId) async {
+      if (fileId.trim().isEmpty || _imageUrlCache.containsKey(fileId)) return;
       try {
         final url = await drive.publicDownloadDataUrl(
           publicToken: widget.publicToken,
@@ -110,6 +118,22 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
         // Best effort per image.
       }
     }
+
+    await ensure(_items[idx].imageDriveFileId);
+    if (idx - 1 >= 0) {
+      // ignore: unawaited_futures
+      ensure(_items[idx - 1].imageDriveFileId);
+    }
+    if (idx + 1 < _items.length) {
+      // ignore: unawaited_futures
+      ensure(_items[idx + 1].imageDriveFileId);
+    }
+  }
+
+  void _go(int next) {
+    if (next < 0 || next >= _items.length) return;
+    setState(() => _index = next);
+    _primeForIndex(next);
   }
 
   Future<void> _submit(CardItem item) async {
@@ -119,7 +143,7 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
     try {
       await ref.read(rankingApiProvider).submitVote(
             publicToken: widget.publicToken,
-            rankingItemId: item.id, // cardId
+            rankingItemId: item.id,
             studentName: widget.studentName,
             score: score,
           );
@@ -129,7 +153,7 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
         _saving[item.id] = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Stem opgeslagen.')),
+        const SnackBar(content: Text('Stem opgeslagen.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -143,11 +167,27 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
   @override
   Widget build(BuildContext context) {
     final Color? accent = parseTabColorHex(widget.tabColorHex);
+    final TextStyle? counterStyle =
+        accent != null ? TextStyle(color: foregroundOnTabColor(accent)) : null;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.tabTitle),
         backgroundColor: accent,
         foregroundColor: accent != null ? foregroundOnTabColor(accent) : null,
+        actions: _items.isEmpty
+            ? null
+            : <Widget>[
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      '${_index + 1} / ${_items.length}',
+                      style: counterStyle,
+                    ),
+                  ),
+                ),
+              ],
       ),
       body: _buildBody(context),
     );
@@ -164,37 +204,70 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
       return const Center(child: Text('Nog geen foto\'s in deze ranking.'));
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _items.length,
-      separatorBuilder: (_, index) => const SizedBox(height: 20),
-      itemBuilder: (context, index) {
-        final item = _items[index];
-        final url = _imageUrlCache[item.imageDriveFileId];
-        final score = _scores[item.id] ?? 5;
-        final isSaving = _saving[item.id] == true;
-        final wasSaved = _saved[item.id] == true;
+    final item = _items[_index];
+    final url = _imageUrlCache[item.imageDriveFileId];
+    final score = _scores[item.id] ?? 5;
+    final isSaving = _saving[item.id] == true;
+    final wasSaved = _saved[item.id] == true;
+    final hasPrev = _index > 0;
+    final hasNext = _index < _items.length - 1;
 
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  AspectRatio(
-                    aspectRatio: 1,
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: (FocusNode node, KeyEvent event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+          if (hasPrev) _go(_index - 1);
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+          if (hasNext) _go(_index + 1);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                (item.title ?? '').trim().isNotEmpty
+                    ? item.title!.trim()
+                    : 'Foto ${_index + 1}',
+                style: Theme.of(context).textTheme.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (wasSaved)
+                Text(
+                  'Je hebt al gestemd — je kunt je stem aanpassen.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                       child: ColoredBox(
                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         child: url != null
                             ? Image.network(
                                 url,
-                                fit: BoxFit.cover,
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                                height: double.infinity,
                                 errorBuilder: (context, error, stackTrace) {
-                                  return const Center(child: Text('Afbeelding laden mislukt'));
+                                  return const Center(
+                                    child: Text('Afbeelding laden mislukt'),
+                                  );
                                 },
                               )
                             : const Center(
@@ -207,62 +280,132 @@ class _RankingViewerScreenState extends ConsumerState<RankingViewerScreen> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Text(
-                          (item.title ?? '').trim().isNotEmpty ? item.title!.trim() : 'Foto ${index + 1}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        if (wasSaved)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Je hebt al gestemd — je kunt je stem aanpassen.',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                        Text('Score: $score / 10', style: Theme.of(context).textTheme.titleSmall),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: List<Widget>.generate(10, (i) {
-                            final n = i + 1;
-                            final selected = score == n;
-                            return ChoiceChip(
-                              label: Text('$n'),
-                              selected: selected,
-                              onSelected: isSaving
-                                  ? null
-                                  : (_) => setState(() => _scores[item.id] = n),
-                            );
-                          }),
-                        ),
-                        const SizedBox(height: 8),
-                        FilledButton(
-                          onPressed: isSaving ? null : () => _submit(item),
-                          child: isSaving
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : Text(wasSaved ? 'Stem bijwerken' : 'Stem opslaan'),
-                        ),
-                      ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Score: $score / 10',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 72,
+                child: Column(
+                  children: <Widget>[
+                    Expanded(
+                      child: Row(
+                        children: List<Widget>.generate(5, (i) {
+                          return _scoreButton(
+                            context,
+                            value: i + 1,
+                            score: score,
+                            isSaving: isSaving,
+                            onPick: () => setState(() => _scores[item.id] = i + 1),
+                          );
+                        }),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Row(
+                        children: List<Widget>.generate(5, (i) {
+                          final n = i + 6;
+                          return _scoreButton(
+                            context,
+                            value: n,
+                            score: score,
+                            isSaving: isSaving,
+                            onPick: () => setState(() => _scores[item.id] = n),
+                          );
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 44,
+                child: FilledButton(
+                  onPressed: isSaving ? null : () => _submit(item),
+                  child: isSaving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(wasSaved ? 'Stem bijwerken' : 'Stem opslaan'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 48,
+                child: Row(
+                  children: <Widget>[
+                    IconButton.filledTonal(
+                      onPressed: hasPrev ? () => _go(_index - 1) : null,
+                      icon: const Icon(Icons.arrow_left),
+                      tooltip: 'Vorige foto',
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Foto ${_index + 1} van ${_items.length}',
+                          style: Theme.of(context).textTheme.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    IconButton.filledTonal(
+                      onPressed: hasNext ? () => _go(_index + 1) : null,
+                      icon: const Icon(Icons.arrow_right),
+                      tooltip: 'Volgende foto',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _scoreButton(
+    BuildContext context, {
+    required int value,
+    required int score,
+    required bool isSaving,
+    required VoidCallback onPick,
+  }) {
+    final theme = Theme.of(context);
+    final selected = score == value;
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: selected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: isSaving ? null : onPick,
+            borderRadius: BorderRadius.circular(8),
+            child: Center(
+              child: Text(
+                '$value',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: selected
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurface,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

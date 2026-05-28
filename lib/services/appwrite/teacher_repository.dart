@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/class_public_token.dart';
 import '../../domain/models/card_item.dart';
+import '../../domain/models/class_student.dart';
 import '../../domain/models/ranking_submission.dart';
 import '../../domain/models/tab_category.dart';
 import '../../domain/models/teachers_class.dart';
@@ -190,6 +193,22 @@ class TeacherRepository {
     return res.documents.map((d) => TabCategory.fromDoc(d.data)).toList();
   }
 
+  Future<List<ClassStudent>> listClassStudents({required String classId}) async {
+    final models.DocumentList res = await databases.listDocuments(
+      databaseId: schema.databaseId,
+      collectionId: schema.classStudentsCollectionId,
+      queries: <String>[
+        Query.equal('classId', classId),
+        Query.limit(500),
+      ],
+    );
+    final list = res.documents.map((d) => ClassStudent.fromDoc(d.data)).toList();
+    list.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
+    return list;
+  }
+
   Future<TabCategory> createTab({
     required String teacherId,
     required String classId,
@@ -276,6 +295,29 @@ class TeacherRepository {
       documentId: tabId,
       data: <String, dynamic>{
         'tabColorHex': normalized,
+      },
+    );
+    return TabCategory.fromDoc(doc.data);
+  }
+
+  Future<TabCategory> updateNameVotingWeights({
+    required String tabId,
+    required List<int> weights,
+  }) async {
+    final cleaned = weights.where((w) => w > 0).toList();
+    if (cleaned.isEmpty) {
+      throw ArgumentError('Vul minstens één stemwaarde in.');
+    }
+    if (cleaned.length > 12) {
+      throw ArgumentError('Maximaal 12 keuzes/stemwaarden.');
+    }
+    final jsonStr = jsonEncode(cleaned);
+    final models.Document doc = await databases.updateDocument(
+      databaseId: schema.databaseId,
+      collectionId: schema.tabsCollectionId,
+      documentId: tabId,
+      data: <String, dynamic>{
+        'nameVotingWeightsJson': jsonStr,
       },
     );
     return TabCategory.fromDoc(doc.data);

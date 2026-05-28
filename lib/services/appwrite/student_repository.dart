@@ -45,6 +45,19 @@ class StudentRepository {
     return res.documents.map((d) => TabCategory.fromDoc(d.data)).toList();
   }
 
+  Future<TabCategory?> getTab(String tabId) async {
+    try {
+      final models.Document doc = await databases.getDocument(
+        databaseId: schema.databaseId,
+        collectionId: schema.tabsCollectionId,
+        documentId: tabId,
+      );
+      return TabCategory.fromDoc(doc.data);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<CardItem>> listCards(String tabId) async {
     final models.DocumentList res = await databases.listDocuments(
       databaseId: schema.databaseId,
